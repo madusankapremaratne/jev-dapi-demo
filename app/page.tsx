@@ -30,6 +30,7 @@ import { EXAMPLE_KINDS, generateExample, type ExampleKind } from "@/lib/examples
 import { Tooltip } from "@/components/Charts";
 import ResultsView, { Block, LabelChip } from "@/components/ResultsView";
 import CallInspector, { QTYPES, QTypeChip } from "@/components/CallInspector";
+import ComparisonWorkbench from "@/components/ComparisonWorkbench";
 import AnswerCards from "@/components/AnswerCards";
 import ExampleTour from "@/components/ExampleTour";
 import { ScoreQuestionEditor } from "@/components/ScoreView";
@@ -73,7 +74,10 @@ const prettyCat = (c: string) => c.replace(/_/g, " ");
 const isKeyError = (msg: string) => /HTTP 40[13]|No TypeSafe API key/.test(msg);
 
 export default function Page() {
-  const [view, setView] = useState<"try" | "dataset" | "example">("example");
+  const [view, setView] = useState<"try" | "dataset" | "example">("try");
+
+  const [engineMode, setEngineMode] = useState<"jev" | "compare">("compare");
+  const [compareBusy, setCompareBusy] = useState(false);
 
   // --- example (saved run, no key needed)
   const [example, setExample] = useState<ExampleRun | null>(null);
@@ -392,13 +396,12 @@ export default function Page() {
               <Box sx={{ flex: 1 }}>
                 <Typography variant="h6">Paste any email, or run your own sample of the dataset</Typography>
                 <Typography variant="body2" color="text.secondary">
-                  You need a TypeSafe API key: get one from the <Link href={KEY_URL} target="_blank" rel="noopener noreferrer">TypeSafe console</Link>.
-                  It goes only to this app&apos;s server, which forwards it to JEV and never stores it.
+                  Choose JEV, OpenAI Responses, or both in the comparison view. Add your own provider keys there to run real classifications.
                 </Typography>
               </Box>
               <Stack direction="row" sx={{ gap: 1, flexWrap: "wrap" }}>
-                <Button variant="contained" startIcon={<MarkEmailReadIcon />} onClick={() => key ? setView("try") : openSettings("Add your TypeSafe API key, then try an email.")}>Try an email</Button>
-                <Button variant="outlined" startIcon={<PlayArrowIcon />} onClick={() => key ? setView("dataset") : openSettings("Add your TypeSafe API key, then run on the dataset.")}>Run on dataset</Button>
+                <Button variant="contained" startIcon={<MarkEmailReadIcon />} onClick={() => setView("try")}>Try an email</Button>
+                <Button variant="outlined" startIcon={<PlayArrowIcon />} onClick={() => setView("dataset")}>Run on dataset</Button>
               </Stack>
             </Stack>
           </CardContent>
@@ -417,9 +420,9 @@ export default function Page() {
             <MarkEmailReadIcon sx={{ fontSize: 18 }} />
           </Box>
           <Typography sx={{ flexGrow: 1, fontWeight: 650, letterSpacing: "-0.01em" }}>
-            JEV <Box component="span" sx={{ color: "text.secondary", fontWeight: 500 }}>email demo</Box>
+            Email <Box component="span" sx={{ color: "text.secondary", fontWeight: 500 }}>Decision Lab</Box>
           </Typography>
-          {keyChip}
+          {engineMode === "jev" && keyChip}
           <MuiTooltip title="Settings"><IconButton onClick={() => openSettings()} aria-label="Settings"><SettingsIcon /></IconButton></MuiTooltip>
         </Toolbar>
         {running && <LinearProgress variant="determinate" value={total ? (done / total) * 100 : 0} sx={{ borderRadius: 0, height: 3 }} />}
@@ -427,10 +430,10 @@ export default function Page() {
 
       <Container maxWidth="lg" sx={{ py: { xs: 3, md: 4 } }}>
         <Box sx={{ mb: 3.5, mt: { md: 1 } }}>
-          <Typography variant="overline" color="primary">TypeSafe JEV · System One</Typography>
-          <Typography variant="h4" sx={{ mt: 0.5, mb: 1 }}>One email, one JEV call, three answers</Typography>
+          <Typography variant="overline" color="primary">JEV + OpenAI · Email Decision Lab</Typography>
+          <Typography variant="h4" sx={{ mt: 0.5, mb: 1 }}>One email. Two providers. Clear comparisons.</Typography>
           <Typography color="text.secondary" sx={{ mb: 2, maxWidth: 640 }}>
-            JEV answers typed questions with calibrated probabilities. Each email gets one call that asks all three question types at once.
+            Explore spam detection, categories and urgency with JEV, or compare it with OpenAI on exactly the same emails.
           </Typography>
           <Stack direction="row" sx={{ gap: 1, flexWrap: "wrap", alignItems: "center" }}>
             {([["noul", "Is it spam?"], ["choice", "Which category?"], ["score", scoreQ ? `How much ${prettyCat(scoreQ.name)}? (0–${scoreQ.criteria.length - 1})` : "Off (see Settings)"]] as
@@ -443,16 +446,19 @@ export default function Page() {
           </Stack>
         </Box>
 
-        <ToggleButtonGroup exclusive value={view} onChange={(_, v) => v && setView(v)} sx={{ mb: 2.5 }}>
+        <ToggleButtonGroup disabled={running || compareBusy || customBusy} exclusive value={view} onChange={(_, v) => v && setView(v)} sx={{ mb: 2.5, display: "flex", flexWrap: "wrap" }}>
           <ToggleButton value="try" sx={{ px: 2.5 }}>Try an email</ToggleButton>
           <ToggleButton value="dataset" sx={{ px: 2.5 }}>{rows.length ? `Run on dataset · ${rows.length}` : "Run on dataset"}</ToggleButton>
           <ToggleButton value="example" sx={{ px: 2.5 }}>Example · no key needed</ToggleButton>
         </ToggleButtonGroup>
 
-        {view === "try" ? tryView : view === "dataset" ? datasetView : exampleView}
+        {view !== "example" && <ToggleButtonGroup size="small" exclusive value={engineMode} disabled={running || compareBusy || customBusy} onChange={(_, v) => v && setEngineMode(v)} sx={{ mb: 2.5 }}>
+          <ToggleButton value="compare">Provider comparison</ToggleButton><ToggleButton value="jev">Original JEV explorer</ToggleButton>
+        </ToggleButtonGroup>}
+        {view !== "example" && engineMode === "compare" ? <ComparisonWorkbench mode={view} scoreQuestion={scoreQ} onBusy={setCompareBusy} /> : view === "try" ? tryView : view === "dataset" ? datasetView : exampleView}
 
         <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 4, textAlign: "center" }}>
-          Dataset: Enron-Spam (Metsis et al., 2006) via Hugging Face SetFit/enron_spam · Model: TypeSafe {JEV_MODEL}
+          Based on Harsha Moraliyage’s JEV demo · Dataset: Enron-Spam (Metsis et al., 2006) via Hugging Face SetFit/enron_spam
         </Typography>
       </Container>
 
@@ -467,7 +473,7 @@ export default function Page() {
             {settingsHint && <Alert severity="info">{settingsHint}</Alert>}
             <Box>
               <Stack direction="row" sx={{ alignItems: "center", gap: 1, flexWrap: "wrap" }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 500, flex: 1 }}>TypeSafe API key</Typography>
+                <Typography variant="subtitle1" sx={{ fontWeight: 500, flex: 1 }}>Original JEV explorer key</Typography>
                 <Button size="small" href={KEY_URL} target="_blank" rel="noopener noreferrer" endIcon={<OpenInNewIcon sx={{ fontSize: "16px !important" }} />}>
                   Get an API key
                 </Button>
@@ -501,7 +507,7 @@ export default function Page() {
               <Stack direction="row" sx={{ alignItems: "center", gap: 1, mb: 0.5 }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>Score question</Typography><QTypeChip type="score" />
               </Stack>
-              <ScoreQuestionEditor value={scoreQ} onChange={setScoreQ} disabled={running} />
+              <ScoreQuestionEditor value={scoreQ} onChange={setScoreQ} disabled={running || compareBusy} />
             </Box>
             <Divider />
             <Box>

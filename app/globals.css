@@ -1,3 +1,8 @@
+:root {
+  --font-sans: "Inter Variable";
+  --font-mono: "JetBrains Mono Variable";
+}
+
 /* Chart, code and question-type tokens. Everything else is styled by the MUI theme (app/theme.ts).
    --surface matches the MUI paper colour so mark rings/gaps blend into the cards. */
 :root {
