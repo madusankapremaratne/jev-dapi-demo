@@ -37,7 +37,8 @@ function shuffle<T>(arr: T[], rnd: () => number): T[] {
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const n = Math.max(1, Math.min(500, Number(url.searchParams.get("n")) || 25));
-  const seed = Number(url.searchParams.get("seed")) || 42;
+  const rawSeed = url.searchParams.get("seed");
+  const seed = rawSeed !== null && Number.isFinite(Number(rawSeed)) ? Math.trunc(Number(rawSeed)) : 42;
   const rnd = mulberry32(seed);
   const data = loadDataset();
   const pick = (label: string) => shuffle(data.filter((r) => r.label === label), rnd).slice(0, n);

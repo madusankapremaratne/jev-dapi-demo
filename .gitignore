@@ -31,3 +31,6 @@ python/enron_spam_test.jsonl
 Thumbs.db
 .vscode/
 .idea/
+
+# Compiled test fixtures
+.test-build/

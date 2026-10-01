@@ -1,3 +1,20 @@
+# Fork enhancements
+
+This repository is madusankapremaratne/jev-dapi-demo, derived from Harsha’s JEV demo.
+Provider comparison is the default Try view; the original JEV explorer and Example view remain intact.
+
+- New comparison files: lib/evaluation.ts, lib/providers/classify.ts, app/api/evaluate/route.ts, components/ComparisonWorkbench.tsx.
+- Only JEV and OpenAI Responses are implemented. Do not claim Decisions API access or invent its contract.
+- Keep OpenAI probabilities null. Never convert discrete labels to fake confidence/probabilities.
+- Paired spam metrics use the intersection of successful results. Report failures/coverage separately.
+- Comparison keys remain memory-only and are never logged/exported. No shared-key fallback in /api/evaluate.
+- Fonts are bundled using Fontsource; do not reintroduce build-time Google font downloads.
+- Verify with npm test, npm run typecheck, npm run build, then inspect light/dark and 390px mobile layouts.
+
+The upstream guidance below describes the original explorer. Its initial-view and font-loading notes are superseded by this section.
+
+---
+
 # JEV showcase project
 
 Demos of **JEV** (TypeSafe AI "System One" decision model) for research and teaching at La Trobe.
